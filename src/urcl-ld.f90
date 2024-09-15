@@ -89,8 +89,14 @@ contains
 
         outer: do i=1,size(inputs)
             open(newunit=unit,file=inputs(i)%value)
-            inquire(unit=unit, name=fname)
+
+            idx = max(index(inputs(i)%value,'/',.true.),index(inputs(i)%value,'\',.true.))
+            fname = inputs(i)%value(idx+1:)
             if (index(fname,'.')/=0) fname = fname(:index(fname,'.')-1)
+            do while (index(trim(fname),' ')/=0)
+                idx = index(trim(fname),' ')
+                fname(idx:idx) = '-'
+            end do
             lnum = 0
             do
                 line = trim(adjustl(getline(end,unit)))
