@@ -1,8 +1,8 @@
 name = "urcl-ld"
-version = "0.1.0"
+version = "1.0.0"
 license = "license"
-author = "Oliver Hines"
-maintainer = "olivermhines@gmail.com"
+author = "Verlio H"
+maintainer = "verlioh0@gmail.com"
 copyright = "Copyright 2024, Oliver Hines"
 [build]
 auto-executables = true
