@@ -213,9 +213,9 @@ contains
         ! replace symbol references
         do i=1,symbolptr
             associate (symbol=>symbols(i)%value)
-                do while (index(linked,symbol)/=0)
-                    idx = index(linked,symbol)
-                    linked = linked(:idx-1)//association(symbolptr)%value//linked(idx+len(symbol):)
+                do while (index(linked,symbol//' ')/=0.or.index(linked,symbol//achar(10))/=0)
+                    idx = max(index(linked,symbol//' '),index(linked,symbol//achar(10)))
+                    linked = linked(:idx-1)//association(i)%value//linked(idx+len(symbol):)
                 end do
             end associate
         end do
