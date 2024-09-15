@@ -67,12 +67,13 @@ contains
         type(string), intent(in) :: inputs(:)
         type(replacement), intent(in) :: replacements(:)
 
-        integer :: i
+        integer :: i, j
         
         character(len=:), allocatable :: defines, line, instruction
         character(len=:), allocatable :: lineend, substr
+        character(len=256) :: fname
         logical :: end
-        integer :: unit, replacenum, idx
+        integer :: unit, replacenum, idx, status, lnum
 
         type(string), allocatable :: symbols(:)
         type(string), allocatable :: association(:)
@@ -88,8 +89,12 @@ contains
 
         outer: do i=1,size(inputs)
             open(newunit=unit,file=inputs(i)%value)
+            inquire(unit=unit, name=fname)
+            if (index(fname,'.')/=0) fname = fname(:index(fname,'.')-1)
+            lnum = 0
             do
                 line = trim(adjustl(getline(end,unit)))
+                lnum = lnum + 1
 
                 if (end) cycle outer
                 if (line(:1)=='!') then
@@ -106,6 +111,8 @@ contains
                     end if
                     symbols(symbolptr)%value = line
                     line = trim(adjustl(getline(end,unit)))
+                    lnum = lnum + 1
+
                     if (end) then
                         print'(A)','error: end of file following symbol declaration'
                         stop
@@ -114,9 +121,12 @@ contains
                         print'(A)','error: symbol declaration not immediately followed by a label'
                         stop
                     end if
+                    line = '.'//trim(fname)//'_'//line(2:)
                     association(symbolptr)%value = line
 
                     linked = linked//line//achar(10)
+                else if (line(:1)=='.') then
+                    linked = linked//'.'//trim(fname)//'_'//line(2:)//achar(10)
                 else
                     !replace instruction
                     idx = index(line,' ')
@@ -143,6 +153,48 @@ contains
                             if (replacenum/=0) then
                                 line = line(:index(line,'%')-1)//'%'//replacements(replacenum)%replacementValue//lineend
                             end if
+                        end if
+                    end if
+
+                    !replace labels
+                    if (index(line,'.')/=0) then
+                        ! check if in string or comment
+                        idx = index(line,'.')
+                        status = 0
+                        j = 1
+                        do while (j<idx)
+                            if (status==2) then ! inside single quote
+                                if (line(j:j)=='\') then
+                                    status = 2
+                                else
+                                    status = 1
+                                end if
+                            else if (status==1) then
+                                if (line(j:j)/='''') then
+                                    write(*,'(A)',advance='no') 'error: missing closing single quote in '//trim(fname)//' on line '
+                                    write(*,'(I0)') lnum
+                                end if
+                                status = 0
+                            else if (status==4) then
+                                if (line(j:j)=='"') then
+                                    status = 0
+                                endif
+                            else if (status==0) then
+                                if (line(j:j)=='"') then
+                                    status = 4
+                                else if (line(j:j)=='''') then
+                                    status = 2
+                                else if (line(j:j+1)=='//') then
+                                    status = 5
+                                    exit
+                                end if
+                            end if
+                            j = j + 1
+                        end do
+                        if (status==0) then
+                            lineend = line(idx+1:)
+                            line = line(:idx-1)
+                            line = line//'.'//trim(fname)//'_'//lineend
                         end if
                     end if
 
