@@ -88,7 +88,7 @@ contains
         linked = ''
 
         outer: do i=1,size(inputs)
-            open(newunit=unit,file=inputs(i)%value)
+            open(newunit=unit,file=inputs(i)%value,status='old')
 
             idx = max(index(inputs(i)%value,'/',.true.),index(inputs(i)%value,'\',.true.))
             fname = inputs(i)%value(idx+1:)
