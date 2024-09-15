@@ -22,6 +22,8 @@ Similarly, the `-rp` option specifies that the following port will be replaced w
 
 These command line options ignore case.
 
+In this case, file1.urcl is a bit special because it is the first passed file, meaning that execution will start in file1.urcl and the headers should be contained in file1.urcl (and not in any other file)
+
 urcl-ld will by default output the result to stdout, but an output file can be specified with the -o command line option.
 
 To define a symbol in a urcl file, insert `!` followed by the name of the symbol on a line before a label. For example:
