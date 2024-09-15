@@ -6,7 +6,7 @@ This program requires a fortran compiler to be installed, gfortran is recommende
 
 Use fpm to install this program (install here: https://fpm.fortran-lang.org/install/index.html#install)
 
-After cloning the repository, run `fpm install` to install the program, you may need to add the directory to your path environment variable, or run `fpm install --prefix=put/dir/here` to install urcl-ld to youa desired path.
+After cloning the repository, run `fpm install` to install the program (you may need to add the install directory to your path environment variable). Alternatively, run `fpm install --prefix=put/dir/here` to install urcl-ld to a desired path.
 
 # Using
 Usage of urcl-ld looks something like this:
