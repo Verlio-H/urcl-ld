@@ -1,9 +1,9 @@
 name = "urcl-ld"
 version = "1.0.0"
 license = "MIT"
-author = "Verlio H"
+author = "Verlio-H"
 maintainer = "verlioh0@gmail.com"
-copyright = "Copyright 2024, Oliver Hines"
+copyright = "Copyright 2024, Verlio-H"
 [build]
 auto-executables = true
 auto-tests = true
