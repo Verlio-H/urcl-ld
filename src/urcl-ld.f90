@@ -258,7 +258,7 @@ contains
                     end if
 
                     !replace labels
-                    if (index(line,'.')/=0) then
+                    do while (index(line,'.')/=0)
                         ! check if in string or comment
                         idx = index(line,'.')
                         status = 0
@@ -295,9 +295,15 @@ contains
                         if (status==0) then
                             lineend = line(idx+1:)
                             line = line(:idx-1)
-                            line = line//'.'//trim(fname)//'_'//lineend
+                            line = line//achar(17)//trim(fname)//'_'//lineend
+                        else
+                            line(idx:idx) = achar(17)
                         end if
-                    end if
+                    end do
+                    do while (index(line,achar(17))/=0)
+                        idx = index(line,achar(17))
+                        line(idx:idx) = '.'
+                    end do
 
                     ! output
                     linked = linked//instruction//line//achar(10)
