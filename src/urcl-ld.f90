@@ -62,10 +62,50 @@ contains
         location = 0
     end function
 
-    function linkurcl(inputs,replacements) result(linked)
+    integer function escapechar(character,fname,lnum) result(char)
+        character(1), intent(in) :: character
+        character(len=*), intent(in) :: fname
+        integer, intent(in) :: lnum
+        select case (character)
+        case ('n')
+            char = 10
+        case ('r')
+            char = 13
+        case ('t')
+            char = 9
+        case ('b')
+            char = 8
+        case ('f')
+            char = 12
+        case ('v')
+            char = 11
+        case ('0')
+            char = 0
+        case ('''')
+            char = iachar('''')
+        case ('"')
+            char = iachar('"')
+        case ('\')
+            char = iachar('\')
+        case default
+            write(*,'(A)',advance='no') 'error: unknown escape sequence in '//fname//' on line '
+            write(*,'(I0)') lnum
+        end select
+    end function
+
+    pure function itoa(i)
+        integer, intent(in) :: i
+        character(len=:), allocatable :: itoa
+        itoa = repeat(' ',12)
+        write(itoa,'(I12)') i
+        itoa = trim(adjustl(itoa))
+    end function
+
+    function linkurcl(inputs,replacements,ascii) result(linked)
         character(len=:), allocatable :: linked
         type(string), intent(in) :: inputs(:)
         type(replacement), intent(in) :: replacements(:)
+        logical, intent(in) :: ascii
 
         integer :: i, j
         
@@ -73,7 +113,7 @@ contains
         character(len=:), allocatable :: lineend, substr
         character(len=256) :: fname
         logical :: end
-        integer :: unit, replacenum, idx, status, lnum
+        integer :: unit, replacenum, idx, status, lnum, tmpi
 
         type(string), allocatable :: symbols(:)
         type(string), allocatable :: association(:)
@@ -101,6 +141,61 @@ contains
             do
                 line = trim(adjustl(getline(end,unit)))
                 lnum = lnum + 1
+
+                ! replace chars and strings
+                if (ascii) then
+                    j = 1
+                    do while (j<=len(line))
+                        if (j<len(line)) then
+                            if (line(j:j+1)=='//') then
+                                exit
+                            end if
+                        end if
+                        if (line(j:j)=='''') then
+                            j = j + 1
+                            if (line(j:j)=='\') then
+                                tmpi = escapechar(line(j+1:j+1),fname,lnum)
+                                line(j-1:j-1) = ' '
+                                if (tmpi<100) then
+                                    line(j:j) = ' '
+                                else
+                                    line(j:j) = achar(tmpi/100+48)
+                                end if
+                                line(j+1:j+1) = achar(mod(tmpi,100)/10+48)
+                                line(j+2:j+2) = achar(mod(tmpi,10)+48)
+                                j = j + 3
+                            else
+                                tmpi = iachar(line(j:j))
+                                if (tmpi<100) then
+                                    line(j-1:j-1) = ' '
+                                else
+                                    line(j-1:j-1) = achar(tmpi/100+48)
+                                end if
+                                line(j:j) = achar(mod(tmpi,100)/10+48)
+                                line(j+1:j+1) = achar(mod(tmpi,10)+48)
+                                j = j + 2
+                            end if
+                        else if (line(j:j)=='"') then
+                            lineend = line(:j-1) !ironic
+                            j = j + 1
+                            substr = ''
+                            do while (line(j:j)/='"')
+                                if (line(j:j)=='\') then
+                                    j = j + 1
+                                    tmpi = escapechar(line(j:j),fname,lnum)
+                                else
+                                    tmpi = iachar(line(j:j))
+                                end if
+                                substr = substr//itoa(tmpi)//' '
+                                j = j + 1
+                            end do
+                            line = lineend//substr//line(j+1:)
+                            j = len(lineend)+len(substr)+1
+                        else
+                            j = j + 1
+                        end if
+                    end do
+                end if
 
                 if (end) cycle outer
                 if (line(:1)=='!') then

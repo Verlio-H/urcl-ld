@@ -8,7 +8,7 @@ program main
     character(len=256) :: argument
     character(len=:), allocatable :: result
     integer :: numargs, i, rnum, inum, r_option, numinputs, numreplacements, unit
-    logical :: o_option
+    logical :: o_option, ascii
 
     outputname = ''
     o_option = .false.
@@ -38,6 +38,7 @@ program main
         end if
 
         select case (argument)
+        case ('--ascii')
         case ('-o')
             o_option = .true.
         case ('-ri','-rp')
@@ -74,6 +75,8 @@ program main
         end if
 
         select case (argument)
+        case ('--ascii')
+            ascii = .true.
         case ('-o')
             o_option = .true.
         case ('-ri')
@@ -90,7 +93,7 @@ program main
         end select
     end do
 
-    result = linkurcl(inputs,replacements)
+    result = linkurcl(inputs,replacements,ascii)
 
     if (outputname=='') then
         write(*,'(A)',advance='no') result
