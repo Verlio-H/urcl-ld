@@ -305,12 +305,18 @@ contains
                         line(idx:idx) = '.'
                     end do
 
+
+                    if (instruction=='@DEFINE') then
+                        defines = defines//instruction//line//achar(10)
+                    else
                     ! output
-                    linked = linked//instruction//line//achar(10)
+                        linked = linked//instruction//line//achar(10)
+                    end if
                 end if
             end do
         end do outer
 
+        linked = defines//linked
         ! replace symbol references
         do i=1,symbolptr
             associate (symbol=>symbols(i)%value)
