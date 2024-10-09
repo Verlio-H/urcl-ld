@@ -109,7 +109,7 @@ contains
 
         integer :: i, j
         
-        character(len=:), allocatable :: defines, line, instruction
+        character(len=:), allocatable :: defines, headers, line, instruction
         character(len=:), allocatable :: lineend, substr
         character(len=256) :: fname
         logical :: end
@@ -125,6 +125,7 @@ contains
         allocate(association(64))
 
         defines = ''
+        headers = ''
         linked = ''
 
         outer: do i=1,size(inputs)
@@ -306,17 +307,20 @@ contains
                     end do
 
 
-                    if (instruction=='@DEFINE') then
+                    select case (instruction)
+                    case ('@DEFINE')
                         defines = defines//instruction//line//achar(10)
-                    else
-                    ! output
+                    case ('BITS','MINHEAP','MINREG','MINSTACK','RUN')
+                        headers = headers//instruction//line//achar(10)
+                    case default
+                        ! output
                         linked = linked//instruction//line//achar(10)
-                    end if
+                    end select
                 end if
             end do
         end do outer
 
-        linked = defines//linked
+        linked = headers//defines//linked
         ! replace symbol references
         do i=1,symbolptr
             associate (symbol=>symbols(i)%value)
