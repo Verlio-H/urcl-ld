@@ -199,6 +199,7 @@ contains
                 end if
 
                 if (end) cycle outer
+                if (len(line) < 1) cycle
                 if (line(:1)=='!') then
                     !symbol declaration
                     symbolptr = symbolptr + 1
