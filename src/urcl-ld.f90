@@ -263,6 +263,11 @@ contains
                     do while (index(line,'.')/=0)
                         ! check if in string or comment
                         idx = index(line,'.')
+                        if (idx /= 1) then
+                            if (line(idx - 1:idx - 1) /= ' ') then
+                                exit
+                            end if
+                        end if
                         status = 0
                         j = 1
                         do while (j<idx)
