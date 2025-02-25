@@ -108,15 +108,19 @@ contains
         itoa = trim(adjustl(itoa))
     end function
 
-    function linkurcl(inputs, replacements, ascii) result(linked)
+    function linkurcl(inputs, replacements, ascii) result(result)
         type(string), intent(in) :: inputs(:)
         type(replacement), intent(in) :: replacements(:)
         logical, intent(in) :: ascii
-        character(:), allocatable :: linked
+        character(:), allocatable :: result
+
+        character(:), allocatable :: resultheaders
+        character(:), allocatable :: resultdefines
+        type(string), allocatable :: linked(:)
 
         integer :: i, j
         
-        character(:), allocatable :: defines, headers, line, instruction
+        character(:), allocatable :: line, instruction
         character(:), allocatable :: lineend, substr
         character(256) :: fname
         logical :: end
@@ -124,16 +128,32 @@ contains
 
         type(string), allocatable :: symbols(:)
         type(string), allocatable :: association(:)
+        logical, allocatable :: includeobj(:)
+        integer, allocatable :: objbindings(:)
         type(string), allocatable :: tmp(:)
+        logical, allocatable :: tmplog(:)
+        integer, allocatable :: tmpint(:)
         integer :: symbolptr
+        integer :: objptr, maxobj
+
+        type(string), allocatable :: defines(:), headers(:)
 
         symbolptr = 0
         allocate(symbols(64))
         allocate(association(64))
+        allocate(objbindings(64))
 
-        defines = ''
-        headers = ''
-        linked = ''
+        allocate(includeobj(64))
+        allocate(linked(64))
+        allocate(defines(64))
+        allocate(headers(64))
+        objptr = 1
+        maxobj = 1
+        includeobj(1) = .true.
+
+        defines(1)%value = ''
+        headers(1)%value = ''
+        linked(1)%value = ''
 
         outer: &
         do i = 1, size(inputs)
@@ -208,7 +228,33 @@ contains
 
                 if (end) cycle outer
                 if (len(line) < 1) cycle
-                if (line(:1) == '!') then
+                if (line(:3) == '!!!') then
+                    maxobj = maxobj + 1
+                    objptr = maxobj
+                    if (objptr > size(includeobj)) then
+                        allocate(tmplog(size(includeobj) + 64))
+                        tmplog(:size(includeobj)) = includeobj(:)
+                        call move_alloc(tmplog, includeobj)
+
+                        allocate(tmp(size(linked) + 64))
+                        tmp(:size(linked)) = linked(:)
+                        call move_alloc(tmp, linked)
+
+                        allocate(tmp(size(headers) + 64))
+                        tmp(:size(headers)) = headers(:)
+                        call move_alloc(tmp, headers)
+
+                        allocate(tmp(size(defines) + 64))
+                        tmp(:size(defines)) = defines(:)
+                        call move_alloc(tmp, defines)
+                    end if
+                    includeobj(objptr) = .false.
+                    linked(objptr)%value = ''
+                    headers(objptr)%value = ''
+                    defines(objptr)%value = ''
+                else if (line(:2) == '!!') then
+                    objptr = 1
+                else if (line(:1) == '!') then
                     !symbol declaration
                     symbolptr = symbolptr + 1
                     if (symbolptr > size(symbols)) then
@@ -219,25 +265,33 @@ contains
                         allocate(tmp(size(association) + 64))
                         tmp(:size(association)) = association(:)
                         call move_alloc(tmp, association)
+
+                        allocate(tmpint(size(objbindings) + 64))
+                        tmpint(:size(objbindings)) = objbindings(:)
+                        call move_alloc(tmpint, objbindings)
                     end if
                     symbols(symbolptr)%value = line
                     line = trim(adjustl(getline(end, unit)))
                     lnum = lnum + 1
 
                     if (end) then
-                        print'(A)','error: end of file following symbol declaration'
-                        stop
+                        print '(A)', 'error: end of file following symbol declaration'
+                        stop -1, quiet=.true.
                     end if
                     if (line(:1) /= '.') then
-                        print'(A)','error: symbol declaration not immediately followed by a label'
-                        stop
+                        print '(A)', 'error: symbol declaration '//symbols(symbolptr)%value//' not immediately followed by a label'
+                        stop -1, quiet=.true.
                     end if
                     line = '.'//trim(fname)//'_'//line(2:)
-                    association(symbolptr)%value = line
+                    if (index(line, '//') /= 0) then
+                        line = line(:index(line, '//'))
+                    end if
+                    association(symbolptr)%value = trim(line)
+                    objbindings(symbolptr) = objptr
 
-                    linked = linked//line//achar(10)
+                    linked(objptr)%value = linked(objptr)%value//line//achar(10)
                 else if (line(:1) == '.') then
-                    linked = linked//'.'//trim(fname)//'_'//line(2:)//achar(10)
+                    linked(objptr)%value = linked(objptr)%value//'.'//trim(fname)//'_'//line(2:)//achar(10)
                 else
                     !replace instruction
                     idx = index(line, ' ')
@@ -324,26 +378,38 @@ contains
 
                     select case (instruction)
                     case ('@DEFINE')
-                        defines = defines//instruction//line//achar(10)
+                        defines(objptr)%value = defines(objptr)%value//instruction//line//achar(10)
                     case ('BITS','MINHEAP','MINREG','MINSTACK','RUN')
-                        headers = headers//instruction//line//achar(10)
+                        headers(objptr)%value = headers(objptr)%value//instruction//line//achar(10)
                     case default
                         ! output
-                        linked = linked//instruction//line//achar(10)
+                        linked(objptr)%value = linked(objptr)%value//instruction//line//achar(10)
                     end select
                 end if
             end do
         end do outer
 
-        linked = headers//defines//linked
+        result = linked(1)%value
+        resultheaders = headers(1)%value
+        resultdefines = defines(1)%value
         ! replace symbol references
-        do i = 1,symbolptr
+        ! TODO: make nested object references more efficient
+        do i = 1, symbolptr
             associate (symbol => symbols(i)%value)
-                do while (index(linked, symbol//' ') /= 0 .or. index(linked, symbol//achar(10)) /= 0)
-                    idx = max(index(linked, symbol//' '), index(linked, symbol//achar(10)))
-                    linked = linked(:idx - 1)//association(i)%value//linked(idx + len(symbol):)
-                end do
+                associate (obj => objbindings(i))
+                    do while (index(result, symbol//' ') /= 0 .or. index(result, symbol//achar(10)) /= 0)
+                        if (.not.includeobj(obj)) then
+                            includeobj(obj) = .true.
+                            result = result//linked(obj)%value
+                            resultheaders = resultheaders//headers(obj)%value
+                            resultdefines = resultdefines//defines(obj)%value
+                        end if
+                        idx = max(index(result, symbol//' '), index(result, symbol//achar(10)))
+                        result = result(:idx - 1)//association(i)%value//result(idx + len(symbol):)
+                    end do
+                end associate
             end associate
         end do
+        result = resultheaders//resultdefines//result
     end function
 end module urcl_ld
