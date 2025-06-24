@@ -228,6 +228,7 @@ contains
 
                 if (end) cycle outer
                 if (len(line) < 1) cycle
+                if (len(line) < 3) line = line//'  '
                 if (line(:3) == '!!!') then
                     maxobj = maxobj + 1
                     objptr = maxobj
@@ -406,6 +407,17 @@ contains
                         end if
                         idx = max(index(result, symbol//' '), index(result, symbol//achar(10)))
                         result = result(:idx - 1)//association(i)%value//result(idx + len(symbol):)
+                    end do
+
+                    do while (index(resultdefines, symbol//' ') /= 0 .or. index(resultdefines, symbol//achar(10)) /= 0)
+                        if (.not.includeobj(obj)) then
+                            includeobj(obj) = .true.
+                            result = result//linked(obj)%value
+                            resultheaders = resultheaders//headers(obj)%value
+                            resultdefines = resultdefines//defines(obj)%value
+                        end if
+                        idx = max(index(resultdefines, symbol//' '), index(resultdefines, symbol//achar(10)))
+                        resultdefines = resultdefines(:idx - 1)//association(i)%value//resultdefines(idx + len(symbol):)
                     end do
                 end associate
             end associate
