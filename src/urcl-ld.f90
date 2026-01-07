@@ -285,7 +285,7 @@ contains
                     end if
                     line = '.'//trim(fname)//'_'//line(2:)
                     if (index(line, '//') /= 0) then
-                        line = line(:index(line, '//'))
+                        line = line(:index(line, '//') - 1)
                     end if
                     association(symbolptr)%value = trim(line)
                     objbindings(symbolptr) = objptr
